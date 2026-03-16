@@ -1,0 +1,37 @@
+# Ambiente virtual
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Variáveis de ambiente e chaves de API
+.env
+.env.local
+.env.production
+
+# Pinecone / banco de dados local
+chroma_db/
+
+# IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Distribuição / build
+dist/
+build/
+*.egg-info/
