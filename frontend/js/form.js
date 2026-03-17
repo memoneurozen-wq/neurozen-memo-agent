@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("email-form");
-  const scriptURL = URL_DO_SCRIPT;
+  const scriptURL = "https://script.google.com/macros/s/AKfycbymrJlfbHDiMIqjIbdLB-CKO3_Wk4OXwBfwS2_dSHiZAfB81n96trMjJPH1vpt80bLJWg/exec";
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
