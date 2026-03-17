@@ -1,6 +1,5 @@
 from groq import Groq
 from pinecone import Pinecone, ServerlessSpec
-from fastembed import TextEmbedding
 from datetime import datetime
 import uuid
 import os
