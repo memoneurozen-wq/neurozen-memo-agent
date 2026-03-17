@@ -1,15 +1,12 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-
 # Core API
 fastapi>=0.115
 uvicorn>=0.30
 python-dotenv>=1.0.0
 
 # AI & Vector DB
-torch
 groq>=0.11
 pinecone==3.2.2
-fastembed==0.0.0
+sentence-transformers>=2.2.0
 
 # Framework
 langchain>=0.3
