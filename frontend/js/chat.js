@@ -1,6 +1,9 @@
 import { agentPrompt } from "./agent.js";
 import { displayMessage, showTyping, removeTyping } from "./ui.js";
 
+// URL do servidor no Render — substitua pela sua URL real após o deploy
+const API_URL = "https://neurozen-memo-agent.onrender.com";
+
 // Espera o DOM carregar
 window.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chat-messages");
@@ -8,24 +11,24 @@ window.addEventListener("DOMContentLoaded", () => {
   const userInput = document.getElementById("user-input");
 
   // Variáveis de controle
-  let isRafaTyping = false;
-  let shouldPauseRafa = false;
+  let isMemoTyping = false;
+  let shouldPauseMemo = false;
 
-  // Frases de boas-vindas variadas (corrigidas)
+  // Frases de boas-vindas variadas
   const welcomeSequences = [
     [
-      "Oi! 👋 Eu sou o Rafa, tudo bem?",
+      "Oi! 👋 Eu sou o Memo, tudo bem?",
       "Faço parte da equipe do NeuroZen e conheço bem o livro.",
       "Se tiver dúvidas ou quiser saber se ele é pra você, estou por aqui!"
     ],
     [
       "Olá! 😊 Seja bem-vindo ao NeuroZen.",
-      "Meu nome é Rafa, li o livro do começo ao fim.",
+      "Meu nome é Memo, li o livro do começo ao fim.",
       "Posso te ajudar a entender se ele é o que você está procurando."
     ],
     [
       "E aí! 👋 Tudo certo?",
-      "Sou o Rafa da equipe do NeuroZen. Já mergulhei no conteúdo do livro.",
+      "Sou o Memo da equipe do NeuroZen. Já mergulhei no conteúdo do livro.",
       "Quer trocar uma ideia e ver se ele faz sentido pra você?"
     ]
   ];
@@ -36,8 +39,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Detecta quando usuário está digitando
   userInput.addEventListener("input", () => {
-    if (isRafaTyping) {
-      shouldPauseRafa = true;
+    if (isMemoTyping) {
+      shouldPauseMemo = true;
     }
   });
 
@@ -63,16 +66,14 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Quebra resposta em múltiplas mensagens
   function splitResponse(response) {
-    // Quebra por pontos finais, quebras de linha, ou frases longas
     const sentences = response
       .split(/(?<=[.!?])\s+|\n+/)
       .filter(sentence => sentence.trim().length > 0);
-    
+
     const messages = [];
     let currentMessage = "";
-    
+
     for (const sentence of sentences) {
-      // Se a mensagem atual + nova frase fica muito longa (mais de 120 chars)
       if (currentMessage.length + sentence.length > 120 && currentMessage.length > 0) {
         messages.push(currentMessage.trim());
         currentMessage = sentence;
@@ -80,52 +81,48 @@ window.addEventListener("DOMContentLoaded", () => {
         currentMessage += (currentMessage ? " " : "") + sentence;
       }
     }
-    
+
     if (currentMessage.trim()) {
       messages.push(currentMessage.trim());
     }
-    
+
     return messages.length > 0 ? messages : [response];
   }
 
   // Envia múltiplas mensagens com pausas
   async function sendMultipleMessages(messages) {
-    isRafaTyping = true;
-    shouldPauseRafa = false;
+    isMemoTyping = true;
+    shouldPauseMemo = false;
 
     for (let i = 0; i < messages.length; i++) {
-      // Verifica se usuário começou a digitar
-      if (shouldPauseRafa) {
+      if (shouldPauseMemo) {
         removeTyping(chatMessages);
         displayMessage(chatMessages, "Pode falar! Estou ouvindo... 😊", "bot");
-        isRafaTyping = false;
+        isMemoTyping = false;
         return;
       }
 
       const message = messages[i];
-      const typingTime = Math.max(message.length * 40, 800); // Mínimo 800ms
+      const typingTime = Math.max(message.length * 40, 800);
 
-      // Pausa entre mensagens (exceto a primeira)
       if (i > 0) {
         await delay(800 + Math.random() * 600);
-        
-        // Verifica novamente se usuário está digitando
-        if (shouldPauseRafa) {
+
+        if (shouldPauseMemo) {
           removeTyping(chatMessages);
           displayMessage(chatMessages, "Pode falar! Estou ouvindo... 😊", "bot");
-          isRafaTyping = false;
+          isMemoTyping = false;
           return;
         }
       }
 
       showTyping(chatMessages);
       await delay(typingTime);
-      
-      // Última verificação antes de enviar
-      if (shouldPauseRafa) {
+
+      if (shouldPauseMemo) {
         removeTyping(chatMessages);
         displayMessage(chatMessages, "Pode falar! Estou ouvindo... 😊", "bot");
-        isRafaTyping = false;
+        isMemoTyping = false;
         return;
       }
 
@@ -133,7 +130,7 @@ window.addEventListener("DOMContentLoaded", () => {
       displayMessage(chatMessages, message, "bot");
     }
 
-    isRafaTyping = false;
+    isMemoTyping = false;
   }
 
   // Inicia mensagem de boas-vindas após um delay
@@ -155,33 +152,33 @@ window.addEventListener("DOMContentLoaded", () => {
     const userMessage = userInput.value.trim();
     if (!userMessage) return;
 
-    // Para qualquer resposta do Rafa em andamento
-    shouldPauseRafa = true;
+    shouldPauseMemo = true;
     removeTyping(chatMessages);
 
     displayMessage(chatMessages, userMessage, "user");
     userInput.value = "";
 
-    // Reset das variáveis de controle
-    isRafaTyping = false;
-    shouldPauseRafa = false;
+    isMemoTyping = false;
+    shouldPauseMemo = false;
 
     showTyping(chatMessages);
 
     try {
-      // Configuração para a API da Groq
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      // Gera ou recupera o session_id persistido no navegador
+      // Garante que o Memo reconhece o usuário mesmo após fechar e reabrir a aba
+      let sessionId = localStorage.getItem("neurozen_session_id");
+      if (!sessionId) {
+        sessionId = "user_" + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem("neurozen_session_id", sessionId);
+      }
+
+      // Chama o servidor hospedado no Render
+      const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer SUA CHAVE_DE_API_GROQ",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [
-            { role: "system", content: agentPrompt },
-            { role: "user", content: userMessage },
-          ],
-          model: "llama3-70b-8192",
+          session_id: sessionId,
+          message: userMessage,
         }),
       });
 
@@ -190,27 +187,26 @@ window.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await response.json();
-      const botResponse = data.choices[0].message.content;
+      const botResponse = data.response;
+
+      // log para debug: mostra quantas memórias foram usadas nesta resposta
+      console.log(`Memórias utilizadas: ${data.memories_retrieved}`);
 
       removeTyping(chatMessages);
 
-      // Quebra a resposta em múltiplas mensagens
       const messages = splitResponse(botResponse);
-      
-      // Envia mensagens com pausas
       await sendMultipleMessages(messages);
 
     } catch (error) {
       console.error("Erro na API:", error);
       removeTyping(chatMessages);
-      
-      // Resposta de fallback mais natural
+
       const fallbackResponses = [
         "Desculpe, estou com uma instabilidade temporária. Que tal tentar novamente em alguns segundos?",
         "Ops! Parece que tive um probleminha técnico. Pode repetir sua pergunta?",
         "Nossa, algo deu errado por aqui. Mas fique à vontade para me perguntar sobre o NeuroZen!"
       ];
-      
+
       const randomFallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
       displayMessage(chatMessages, randomFallback, "bot");
     }
