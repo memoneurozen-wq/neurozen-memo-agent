@@ -4,6 +4,7 @@ from datetime import datetime
 import uuid
 import os
 from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
 
 # Carrega o arquivo .env do diretório raiz
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -80,8 +81,7 @@ class AgentMemory:
     def __init__(self):
         print("🧠 Inicializando sistema de memória...")
 
-        # Modelo de embeddings — roda no servidor, sem API externa
-        # Modelo de embeddings — fastembed usa ONNX (sem Torch)
+        # Modelo de embeddings — sentence-transformers
         print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...")
         self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
         print("  ✅ Modelo carregado!")
@@ -110,9 +110,8 @@ class AgentMemory:
         print("✅ Sistema de memória pronto!\n")
 
     def _embed(self, text: str) -> list:
-        """Converte texto em vetor numérico usando fastembed."""
-        # fastembed retorna um iterador, pegamos o primeiro item
-        return list(self.embedding_model.embed([text]))[0].tolist()
+        """Converte texto em vetor numérico usando sentence-transformers."""
+        return self.embedding_model.encode([text])[0].tolist()
 
     def save_memory(self, session_id: str, user_message: str, agent_response: str, metadata: dict = None):
         """
