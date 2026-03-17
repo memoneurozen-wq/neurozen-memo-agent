@@ -8,8 +8,8 @@ python-dotenv>=1.0.0
 # AI & Vector DB
 torch
 groq>=0.11
-pinecone==5.4.2
-fastembed>=0.4.0
+pinecone==3.2.2
+fastembed==0.0.0
 
 # Framework
 langchain>=0.3
