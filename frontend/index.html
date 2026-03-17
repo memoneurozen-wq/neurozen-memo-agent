@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NeuroZen - Guia da Mente Criativa com IA</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <div class="logo">NeuroZen</div>
+        <ul class="nav-links">
+          <li><a href="index.html">Início</a></li>
+          <li><a href="terms-of-use.html">Termos de Uso</a></li>
+          <li><a href="privacy-policy.html">Privacidade</a></li>
+          <li><a href="thanks.html">Obrigado</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-content">
+        <div class="text">
+          <h1>NeuroZen</h1>
+          <p>
+            O guia essencial para liberar o poder da sua mente criativa com
+            Inteligência Artificial.
+          </p>
+          <form id="email-form">
+            <input
+              type="email"
+              name="entry.YOUR_EMAIL_ENTRY_ID"
+              placeholder="Seu melhor e-mail"
+              required
+            />
+            <button type="submit">Quero receber novidades</button>
+          </form>
+        </div>
+        <div class="cover">
+          <img
+            class="animated-book"
+            src="images/book-cover.png"
+            alt="Capa do livro NeuroZen"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="testimonials">
+      <h2>O que dizem sobre o livro</h2>
+      <div class="testimonial-cards">
+        <div class="card">
+          <p>
+            "completamente minha forma de pensar criatividade com IA!"
+          </p>
+          <span>Juliana M.</span>
+        </div>
+        <div class="card">
+          <p>"verdadeiro desbloqueio mental criativo."</p>
+          <span>Pedro L.</span>
+        </div>
+        <div class="card">
+          <p>
+            "melhor conteúdo que já li sobre mente criativa e inteligência
+            artificial."
+          </p>
+          <span>Carla V.</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="chat-area" class="chat-section">
+      <h2>Tem dúvidas sobre o livro?</h2>
+
+      <h2>💬 Converse com nosso especialista</h2>
+      <div id="chat-window">
+        <div id="chat-messages">
+        </div>
+        <div id="chat-input">
+          <input
+            type="text"
+            id="user-input"
+            placeholder="Digite sua mensagem aqui..."
+            required
+          />
+          <button id="send-btn">Enviar</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>&copy; 2025 NeuroZen. Todos os direitos reservados.</p>
+    </footer>
+
+    <script type="module" src="js/agent.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/chat.js"></script>
+    <script type="module" src="js/form.js"></script>
+  </body>
+</html>
