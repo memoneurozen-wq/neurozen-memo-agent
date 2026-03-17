@@ -83,7 +83,7 @@ class AgentMemory:
         # Modelo de embeddings — roda no servidor, sem API externa
         # Modelo de embeddings — fastembed usa ONNX (sem Torch)
         print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...")
-        self.embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
+        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
         print("  ✅ Modelo carregado!")
 
         # Conecta ao Pinecone
