@@ -9,6 +9,9 @@ from fastembed import TextEmbedding # Adicionado para funcionar com o código ab
 # Carrega o arquivo .env do diretório raiz
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
+# Silenciar avisos do HF Hub se o token não for fornecido
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
 # =============================================================
 # CONFIGURAÇÃO
 # =============================================================
@@ -77,36 +80,33 @@ class AgentMemory:
 
     def __init__(self):
         print("🧠 Inicializando sistema de memória...")
-        # Modelo de embeddings — fastembed usa ONNX (sem Torch)
-        print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...")
-        self.embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
-        print("  ✅ Modelo carregado!")
-
+        # Modelo de embeddings será carregado apenas no primeiro uso (Lazy Loading)
+        self.embedding_model = None
+        
         # Conecta ao Pinecone
         self.pc = Pinecone(api_key=PINECONE_API_KEY)
-
-        # Cria o index se ainda não existir
-        if PINECONE_INDEX_NAME not in self.pc.list_indexes().names():
-            print(f"  🔧 Criando index '{PINECONE_INDEX_NAME}' no Pinecone...")
-            self.pc.create_index(
-                name=PINECONE_INDEX_NAME,
-                dimension=384,
-                metric="cosine",
-                spec=ServerlessSpec(cloud="aws", region=PINECONE_REGION)
-            )
-            print("  ✅ Index criado!")
-        else:
-            print(f"  ✅ Index '{PINECONE_INDEX_NAME}' já existe.")
-
+        
+        # Conecta direto ao índice (acelera o boot no Render)
+        # Nota: O índice deve existir no Pinecone (384 dimensões, métrica cosine)
         self.index = self.pc.Index(PINECONE_INDEX_NAME)
-        stats = self.index.describe_index_stats()
-        print(f"  📊 Vetores existentes: {stats['total_vector_count']}")
-        print("✅ Sistema de memória pronto!\n")
+        
+        print(f"  ✅ Conectado ao índice '{PINECONE_INDEX_NAME}'.")
+        print("✅ Sistema de memória pronto (modelo será carregado no primeiro uso)!\n")
+
+    def _get_model(self):
+        """Carrega o modelo de embeddings apenas quando necessário."""
+        if self.embedding_model is None:
+            print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}' (Lazy Loading)...")
+            # fastembed usa ONNX (sem Torch), mas ainda leva alguns segundos na primeira vez
+            self.embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
+            print("  ✅ Modelo carregado com sucesso!")
+        return self.embedding_model
 
     def _embed(self, text: str) -> list:
-        """Converte texto em vetor numérico usando fastembed."""
+        """Converte texto em vetor numérico usando o modelo carregado lazily."""
+        model = self._get_model()
         # fastembed retorna um iterador, pegamos o primeiro item
-        return list(self.embedding_model.embed([text]))[0].tolist()
+        return list(model.embed([text]))[0].tolist()
 
     def save_memory(self, session_id: str, user_message: str, agent_response: str, metadata: dict = None):
         """
@@ -257,6 +257,25 @@ class NeuroZenAgent:
             self.short_term_memory[session_id] = history[-RECENT_HISTORY_SIZE:]
 
     def chat(self, session_id: str, user_message: str, user_metadata: dict = None) -> str:
+        """
+        Método legado que faz tudo de uma vez.
+        Recomenda-se usar generate_response + save_memory separadamente para performance.
+        """
+        agent_response = self.generate_response(session_id, user_message)
+        
+        self.memory.save_memory(
+            session_id=session_id,
+            user_message=user_message,
+            agent_response=agent_response,
+            metadata=user_metadata or {}
+        )
+        return agent_response
+
+    def generate_response(self, session_id: str, user_message: str) -> str:
+        """
+        Gera a resposta do LLM e atualiza a memória de curto prazo.
+        NÃO salva na memória de longo prazo (Pinecone).
+        """
         print(f"\n{'='*50}")
         print(f"👤 Usuário [{session_id[:8]}...]: {user_message}")
 
@@ -284,12 +303,5 @@ class NeuroZenAgent:
 
         self._update_short_term_memory(session_id, "user", user_message)
         self._update_short_term_memory(session_id, "assistant", agent_response)
-
-        self.memory.save_memory(
-            session_id=session_id,
-            user_message=user_message,
-            agent_response=agent_response,
-            metadata=user_metadata or {}
-        )
 
         return agent_response

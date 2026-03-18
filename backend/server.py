@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from memory_agent import NeuroZenAgent
@@ -31,17 +31,28 @@ class ChatResponse(BaseModel):
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     metadata = {}
     if request.user_name:
         metadata["user_name"] = request.user_name
 
+    # Recuperação é rápida, mas necessária antes da resposta para injetar contexto
     memories = agent.memory.retrieve_memories(request.session_id, request.message)
 
-    response = agent.chat(
+    # Gera a resposta do Llama (isso leva alguns segundos e é a parte que o usuário aguarda)
+    response = agent.generate_response(
+        session_id=request.session_id,
+        user_message=request.message
+    )
+
+    # AGENDA o salvamento no Pinecone para rodar depois que a resposta for enviada
+    # Isso remove ~1 a 2 segundos de espera do usuário
+    background_tasks.add_task(
+        agent.memory.save_memory,
         session_id=request.session_id,
         user_message=request.message,
-        user_metadata=metadata if metadata else None
+        agent_response=response,
+        metadata=metadata if metadata else None
     )
 
     return ChatResponse(
