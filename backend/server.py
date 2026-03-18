@@ -3,8 +3,8 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-# Importamos a classe, mas não instanciamos ainda para evitar timeout no boot
-from memory_agent import NeuroZenAgent
+# Importamos o tipo para type hinting (se necessário), mas o import real será lazy
+# from memory_agent import NeuroZenAgent
 
 # Garante que os logs apareçam no Render sem atraso
 print("🚀 Servidor NeuroZen iniciando...", flush=True)
@@ -28,6 +28,8 @@ def get_agent():
     if agent_instance is None:
         print("🧠 Carregando NeuroZenAgent e modelos de IA (Lazy Loading)...", flush=True)
         try:
+            # Import local para evitar carregar tudo no boot do servidor
+            from memory_agent import NeuroZenAgent
             agent_instance = NeuroZenAgent()
             print("✅ Agente carregado com sucesso!", flush=True)
         except Exception as e:

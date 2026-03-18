@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 import os
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 # Carrega o arquivo .env do diretório raiz
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -74,16 +74,16 @@ NÃO mencione que tem memória ou que está consultando histórico."""
 
 class AgentMemory:
     """
-    Gerencia memória de longo prazo usando Pinecone e embeddings locais.
+    Gerencia memória de longo prazo usando Pinecone e embeddings locais (fastembed).
     Cada usuário tem suas memórias isoladas por session_id.
     """
 
     def __init__(self):
-        print("🧠 Inicializando sistema de memória...", flush=True)
+        print("🧠 Inicializando sistema de memória (fastembed)...", flush=True)
 
-        # Modelo de embeddings — sentence-transformers
+        # fastembed carrega em segundos e usa pouca RAM
         print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...", flush=True)
-        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+        self.embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
         print("  ✅ Modelo carregado!", flush=True)
 
         # Conecta ao Pinecone
@@ -110,8 +110,9 @@ class AgentMemory:
         print("✅ Sistema de memória pronto!\n", flush=True)
 
     def _embed(self, text: str) -> list:
-        """Converte texto em vetor numérico usando sentence-transformers."""
-        return self.embedding_model.encode([text])[0].tolist()
+        """Converte texto em vetor numérico usando fastembed."""
+        # fastembed retorna um iterador, pegamos o primeiro item
+        return list(self.embedding_model.embed([text]))[0].tolist()
 
     def save_memory(self, session_id: str, user_message: str, agent_response: str, metadata: dict = None):
         """
