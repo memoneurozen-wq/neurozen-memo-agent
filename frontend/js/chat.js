@@ -2,9 +2,8 @@ import { agentPrompt } from "./agent.js";
 import { displayMessage, showTyping, removeTyping } from "./ui.js";
 
 // Detecta se está rodando localmente ou na web para definir a URL da API
-const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:"
-  ? "http://localhost:8000"
-  : "https://neurozen-memo-agent.onrender.com";
+// Forçando a URL do Render para teste local do frontend com backend de produção
+const API_URL = "https://neurozen-memo-agent.onrender.com";
 
 // Espera o DOM carregar
 window.addEventListener("DOMContentLoaded", () => {
