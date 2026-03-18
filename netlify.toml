@@ -1,0 +1,10 @@
+[build]
+  # O Netlify vai ignorar a raiz e focar apenas nos arquivos do site
+  publish = "frontend"
+  
+  # Como não estamos usando frameworks como React ou Vue, não precisamos de comando de build
+  command = "echo 'Pai tá on! Publicando apenas o frontend estático...'"
+
+[context.production.environment]
+  # Forçamos o Netlify a ignorar a instalação automática de dependências Python
+  PYTHON_VERSION = "3.10"
