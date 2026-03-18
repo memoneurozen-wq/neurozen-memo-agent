@@ -79,12 +79,12 @@ class AgentMemory:
     """
 
     def __init__(self):
-        print("🧠 Inicializando sistema de memória...")
+        print("🧠 Inicializando sistema de memória...", flush=True)
 
         # Modelo de embeddings — sentence-transformers
-        print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...")
+        print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...", flush=True)
         self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
-        print("  ✅ Modelo carregado!")
+        print("  ✅ Modelo carregado!", flush=True)
 
         # Conecta ao Pinecone
         self.pc = Pinecone(api_key=PINECONE_API_KEY)
@@ -93,21 +93,21 @@ class AgentMemory:
         # dimension=384 corresponde ao modelo all-MiniLM-L6-v2
         # metric="cosine" é o padrão para similaridade semântica
         if PINECONE_INDEX_NAME not in self.pc.list_indexes().names():
-            print(f"  🔧 Criando index '{PINECONE_INDEX_NAME}' no Pinecone...")
+            print(f"  🔧 Criando index '{PINECONE_INDEX_NAME}' no Pinecone...", flush=True)
             self.pc.create_index(
                 name=PINECONE_INDEX_NAME,
                 dimension=384,
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region=PINECONE_REGION)
             )
-            print("  ✅ Index criado!")
+            print("  ✅ Index criado!", flush=True)
         else:
-            print(f"  ✅ Index '{PINECONE_INDEX_NAME}' já existe.")
+            print(f"  ✅ Index '{PINECONE_INDEX_NAME}' já existe.", flush=True)
 
         self.index = self.pc.Index(PINECONE_INDEX_NAME)
         stats = self.index.describe_index_stats()
-        print(f"  📊 Vetores existentes: {stats['total_vector_count']}")
-        print("✅ Sistema de memória pronto!\n")
+        print(f"  📊 Vetores existentes: {stats['total_vector_count']}", flush=True)
+        print("✅ Sistema de memória pronto!\n", flush=True)
 
     def _embed(self, text: str) -> list:
         """Converte texto em vetor numérico usando sentence-transformers."""
