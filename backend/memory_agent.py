@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 import os
 from dotenv import load_dotenv
-from fastembed import TextEmbedding
+from fastembed import TextEmbedding # Adicionado para funcionar com o código abaixo
 
 # Carrega o arquivo .env do diretório raiz
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -22,8 +22,6 @@ PINECONE_INDEX_NAME = "neurozen-memories"
 # Região do seu projeto Pinecone (aparece na tela de API Keys)
 PINECONE_REGION = "us-east-1"
 
-# Modelo de embeddings — roda no servidor, sem API externa
-# all-MiniLM-L6-v2: ~22MB, gera vetores de 384 dimensões
 # Modelo de embeddings — muito mais leve, sem Torch
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
@@ -34,7 +32,6 @@ TOP_K_MEMORIES = 3
 RECENT_HISTORY_SIZE = 6
 
 # Prompt base do agente
-# O {memory_context} será preenchido dinamicamente a cada mensagem
 AGENT_SYSTEM_PROMPT = """Você é Memo, da equipe do NeuroZen. Fale de forma amigável, natural e levemente descontraída, como um brasileiro simpático explicando um produto que conhece bem.
 
 ## LIVRO: NeuroZen - Guia da Mente Criativa com IA
@@ -74,40 +71,37 @@ NÃO mencione que tem memória ou que está consultando histórico."""
 
 class AgentMemory:
     """
-    Gerencia memória de longo prazo usando Pinecone e embeddings locais (fastembed).
+    Gerencia memória de longo prazo usando Pinecone e embeddings locais.
     Cada usuário tem suas memórias isoladas por session_id.
     """
 
     def __init__(self):
-        print("🧠 Inicializando sistema de memória (fastembed)...", flush=True)
-
-        # fastembed carrega em segundos e usa pouca RAM
-        print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...", flush=True)
+        print("🧠 Inicializando sistema de memória...")
+        # Modelo de embeddings — fastembed usa ONNX (sem Torch)
+        print(f"  📦 Carregando modelo '{EMBEDDING_MODEL}'...")
         self.embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
-        print("  ✅ Modelo carregado!", flush=True)
+        print("  ✅ Modelo carregado!")
 
         # Conecta ao Pinecone
         self.pc = Pinecone(api_key=PINECONE_API_KEY)
 
         # Cria o index se ainda não existir
-        # dimension=384 corresponde ao modelo all-MiniLM-L6-v2
-        # metric="cosine" é o padrão para similaridade semântica
         if PINECONE_INDEX_NAME not in self.pc.list_indexes().names():
-            print(f"  🔧 Criando index '{PINECONE_INDEX_NAME}' no Pinecone...", flush=True)
+            print(f"  🔧 Criando index '{PINECONE_INDEX_NAME}' no Pinecone...")
             self.pc.create_index(
                 name=PINECONE_INDEX_NAME,
                 dimension=384,
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region=PINECONE_REGION)
             )
-            print("  ✅ Index criado!", flush=True)
+            print("  ✅ Index criado!")
         else:
-            print(f"  ✅ Index '{PINECONE_INDEX_NAME}' já existe.", flush=True)
+            print(f"  ✅ Index '{PINECONE_INDEX_NAME}' já existe.")
 
         self.index = self.pc.Index(PINECONE_INDEX_NAME)
         stats = self.index.describe_index_stats()
-        print(f"  📊 Vetores existentes: {stats['total_vector_count']}", flush=True)
-        print("✅ Sistema de memória pronto!\n", flush=True)
+        print(f"  📊 Vetores existentes: {stats['total_vector_count']}")
+        print("✅ Sistema de memória pronto!\n")
 
     def _embed(self, text: str) -> list:
         """Converte texto em vetor numérico usando fastembed."""
@@ -125,7 +119,7 @@ class AgentMemory:
             "timestamp": datetime.now().isoformat(),
             "user_message": user_message[:200],
             "agent_response": agent_response[:200],
-            "text": memory_text[:500],  # guardamos o texto nos metadados pois o Pinecone não devolve o vetor original
+            "text": memory_text[:500],
         }
 
         if metadata:
@@ -141,18 +135,16 @@ class AgentMemory:
     def retrieve_memories(self, session_id: str, query: str, k: int = TOP_K_MEMORIES) -> list:
         """
         Busca os fragmentos de memória mais relevantes para a query atual.
-        Filtra APENAS as memórias do usuário específico (session_id).
         """
         results = self.index.query(
             vector=self._embed(query),
             top_k=k,
-            filter={"session_id": {"$eq": session_id}},  # ← filtro crítico por usuário
+            filter={"session_id": {"$eq": session_id}},
             include_metadata=True
         )
 
         memories = []
         for match in results["matches"]:
-            # score no Pinecone com cosine vai de 0 a 1 — quanto maior, mais relevante
             if match["score"] > 0.3:
                 memories.append({
                     "text": match["metadata"].get("text", ""),
@@ -165,7 +157,6 @@ class AgentMemory:
     def get_user_profile(self, session_id: str) -> dict:
         """
         Extrai informações de perfil do usuário a partir das memórias salvas.
-        Usa vetor neutro para recuperar registros por metadado.
         """
         results = self.index.query(
             vector=[0.0] * 384,
@@ -223,16 +214,9 @@ class NeuroZenAgent:
     def __init__(self):
         self.groq_client = Groq(api_key=GROQ_API_KEY)
         self.memory = AgentMemory()
-
-        # Memória de curto prazo: histórico recente por sessão
-        # Estrutura: { session_id: [{"role": ..., "content": ...}, ...] }
         self.short_term_memory = {}
 
     def _build_memory_context(self, session_id: str, user_message: str) -> str:
-        """
-        Monta o texto de contexto que será injetado no {memory_context} do prompt.
-        Combina perfil do usuário + memórias relevantes recuperadas do Pinecone.
-        """
         profile = self.memory.get_user_profile(session_id)
         long_term_memories = self.memory.retrieve_memories(session_id, user_message)
 
@@ -261,16 +245,11 @@ class NeuroZenAgent:
         return "\n".join(context_parts)
 
     def _get_short_term_history(self, session_id: str) -> list:
-        """Retorna o histórico recente da sessão atual."""
         if session_id not in self.short_term_memory:
             self.short_term_memory[session_id] = []
         return self.short_term_memory[session_id]
 
     def _update_short_term_memory(self, session_id: str, role: str, content: str):
-        """
-        Adiciona mensagem ao histórico recente.
-        Sliding window: mantém apenas as últimas RECENT_HISTORY_SIZE mensagens.
-        """
         history = self._get_short_term_history(session_id)
         history.append({"role": role, "content": content})
 
@@ -278,29 +257,17 @@ class NeuroZenAgent:
             self.short_term_memory[session_id] = history[-RECENT_HISTORY_SIZE:]
 
     def chat(self, session_id: str, user_message: str, user_metadata: dict = None) -> str:
-        """
-        Processa uma mensagem do usuário e retorna a resposta do agente.
-        """
         print(f"\n{'='*50}")
         print(f"👤 Usuário [{session_id[:8]}...]: {user_message}")
 
-        # 1. Constrói contexto de memória de longo prazo
         memory_context = self._build_memory_context(session_id, user_message)
-        memories_found = self.memory.retrieve_memories(session_id, user_message)
-        print(f"🧠 Memórias recuperadas: {len(memories_found)}")
-
-        # 2. Monta o system prompt com memória injetada
         system_prompt = AGENT_SYSTEM_PROMPT.format(memory_context=memory_context)
-
-        # 3. Recupera histórico recente (memória de curto prazo)
         recent_history = self._get_short_term_history(session_id)
 
-        # 4. Monta a lista completa de mensagens para o LLM
         messages = [{"role": "system", "content": system_prompt}]
         messages.extend(recent_history)
         messages.append({"role": "user", "content": user_message})
 
-        # 5. Chama o Groq
         try:
             response = self.groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -309,18 +276,15 @@ class NeuroZenAgent:
                 temperature=0.7,
             )
             agent_response = response.choices[0].message.content
-
         except Exception as e:
             agent_response = "Desculpe, tive um problema técnico. Pode repetir?"
             print(f"❌ Erro Groq: {e}")
 
         print(f"🤖 Memo: {agent_response[:100]}...")
 
-        # 6. Atualiza memória de curto prazo
         self._update_short_term_memory(session_id, "user", user_message)
         self._update_short_term_memory(session_id, "assistant", agent_response)
 
-        # 7. Salva na memória de longo prazo (Pinecone)
         self.memory.save_memory(
             session_id=session_id,
             user_message=user_message,
